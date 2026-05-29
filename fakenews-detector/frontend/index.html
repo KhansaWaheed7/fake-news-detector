@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>VerifyAI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="styles.css"/>
+
+</head>
+
+<body>
+
+<nav>
+  <a class="logo" href="index.html">
+    <span class="logo-text">VerifyAI</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="index.html" class="active">Home</a></li>
+
+    <li><a href="#" onclick="showPage('analyzer')">Analyzer</a></li>
+    <li><a href="#" onclick="showPage('dashboard')">Dashboard</a></li>
+    <li><a href="#" onclick="showPage('analytics')">Analytics</a></li>
+    <li><a href="#" onclick="showPage('about')">About</a></li>
+  </ul>
+</nav>
+
+<!--LANDING -->
+<div class="page active" id="home">
+  <div class="hero">
+    <div>
+      <p class="hero-eyebrow">FAKE NEWS DETECTOR</p>
+      <h1>Don't share<br/>before you <em>verify.</em></h1>
+      <p class="hero-sub">The system instantly checks if a news article is real or fake, flags misleading phrases, rates source trustworthiness, and compares it with fact-checkers.</p>
+      <div class="cta-row">
+        <button class="btn-primary" onclick="showPage('analyzer')">Analyze an Article </button>
+        <button class="btn-outline" onclick="showPage('dashboard')">View Dashboard</button>
+      </div>
+      
+    </div>
+    <div class="hero-visual">
+      <div class="mock-card">
+        <div class="mock-score">
+          <svg class="dial-wrap" viewBox="0 0 140 140">
+            <circle class="dial-bg" cx="70" cy="70" r="54" stroke-dasharray="270" stroke-dashoffset="0" style="transform:rotate(-220deg);transform-origin:center"/>
+            <circle class="dial-fill" id="hero-dial" cx="70" cy="70" r="54" stroke-dasharray="270" stroke-dashoffset="270" stroke="#e74c3c"/>
+          </svg>
+          <div class="dial-label">
+            <span class="dial-score" id="hero-score" style="color:#e74c3c">18</span>
+            <span class="dial-tag" style="color:#e74c3c">FAKE</span>
+          </div>
+          <p style="font-size:.75rem;color:var(--ink3);margin-top:.5rem">Credibility Score</p>
+        </div>
+        <div class="mock-highlights">
+          Scientists <span class="hl-red">CONFIRM miracle cure</span> for diabetes that <span class="hl-amber">they don't want you</span> to know about. <span class="hl-red">SHOCKING</span> truth finally <span class="hl-amber">exposed</span> by insider sources!
+        </div>
+        <div class="mock-badges">
+          <span class="badge badge-red">3 Clickbait Phrases</span>
+          <span class="badge badge-amber">2 Hedging Phrases</span>
+          <span class="badge badge-red">No Credible Source</span>
+        </div>
+      </div>
+    </div>
+  </div>
+ 
+</div>
+
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard</title>
+
+  <link rel="stylesheet" href="styles.css"/>
+
+  <!-- Chart.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+
+<body>
+
+<!-- NAVBAR -->
+<nav>
+  <a class="logo" href="index.html">
+    <span class="logo-text">VerifyAI</span>
+  </a>
+
+  <ul class="nav-links">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="analyzer.html">Analyzer</a></li>
+    <li><a href="dashboard.html" class="active">Dashboard</a></li>
+    <li><a href="analytics.html" >Analytics</a></li>
+    <li><a href="about.html">About</a></li>
+  </ul>
+</nav>
+
+<div class="page active" id="dashboard">
+  <div id="db">
+    <h2>Dashboard</h2>
+    <p class="subtitle">Live overview of detection activity and trends</p>
+    <div class="kpi-row">
+      <div class="kpi"><div class="kpi-label">TOTAL ANALYZED</div><div class="kpi-value">14,872</div><div class="kpi-change up">↑ 8.4% this week</div></div>
+      <div class="kpi"><div class="kpi-label">FAKE DETECTED</div><div class="kpi-value">6,203</div><div class="kpi-change down">↓ 3.1% vs last week</div></div>
+      <div class="kpi"><div class="kpi-label">REAL VERIFIED</div><div class="kpi-value">8,669</div><div class="kpi-change up">↑ 12.2% this week</div></div>
+      <div class="kpi"><div class="kpi-label">MODEL ACCURACY</div><div class="kpi-value">61.9%</div><div class="kpi-change up">Real LIAR dataset</div></div>
+    </div>
+    <div class="chart-grid">
+      <div class="chart-card">
+        <h3>Daily Trend </h3>
+        <canvas id="trendChart"></canvas>
+      </div>
+ 
+    </div>
+    <div style="margin-bottom:1.2rem;display:flex;align-items:center;justify-content:space-between">
+      <h3 style="font-size:.95rem;font-weight:600">Recent Analysis History</h3>
+      <button class="btn-outline" style="font-size:.8rem;padding:6px 14px" onclick="showPage('analyzer')">New Analysis →</button>
+    </div>
+    <table class="history-table">
+      <thead><tr><th>#</th><th>Article Snippet</th><th>Score</th><th>Verdict</th><th>Date</th></tr></thead>
+      <tbody id="history-body"></tbody>
+    </table>
+  </div>
+</div>
+<!-- APP SCRIPT -->
+<script src="app.js"></script>
+<script>
+  initDashboard();
+</script>
+</body>
+</html>

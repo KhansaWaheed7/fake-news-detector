@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Analyzer</title>
+<link rel="stylesheet" href="styles.css"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="styles.css"/>
+
+</head>
+<body>
+
+<nav>
+  <a class="logo" href="index.html">
+    <span class="logo-text">VerifyAI</span>
+  </a>
+
+  <ul class="nav-links">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="analyzer.html" class="active">Analyzer</a></li>
+    <li><a href="dashboard.html" >Dashboard</a></li>
+    <li><a href="analytics.html" >Analytics</a></li>
+    <li><a href="about.html">About</a></li>
+  </ul>
+</nav>
+
+<div class="page active" id="analyzer">
+  <div id="analyzer-inner">
+    <div class="analyzer-header">
+      <h2>Article Analyzer</h2>
+      <p>Paste article text or enter a URL to analyze for misinformation signals</p>
+    </div>
+    <div class="input-section">
+      <div class="input-tabs">
+        <button class="tab-btn active" onclick="switchTab('text')">Paste Text</button>
+        <button class="tab-btn" onclick="switchTab('url')">Enter URL</button>
+        <button class="tab-btn" onclick="switchTab('demo')">Try a Demo</button>
+      </div>
+      <div class="tab-pane active" id="tab-text">
+        <textarea class="url-input" id="article-text" placeholder="Paste news article text here…" oninput="updateCount()"></textarea>
+      </div>
+      <div class="tab-pane" id="tab-url">
+        <input class="url-input" id="article-url" type="url" placeholder="https://example.com/article"/>
+        <p style="font-size:.75rem;color:var(--ink3);margin-top:.5rem">We'll fetch and analyze the article content. Works best with publicly accessible articles.</p>
+      </div>
+      <div class="tab-pane" id="tab-demo">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;padding:.5rem 0">
+          <button class="btn-outline" onclick="loadDemo('fake')" style="text-align:left;padding:.8rem 1rem">
+            <div style="font-weight:600;font-size:.82rem;color:var(--red-mid);margin-bottom:.3rem">Fake Article Example</div>
+            <div style="font-size:.75rem;color:var(--ink3)">Miracle cure conspiracy with clickbait language</div>
+          </button>
+          <button class="btn-outline" onclick="loadDemo('real')" style="text-align:left;padding:.8rem 1rem">
+            <div style="font-weight:600;font-size:.82rem;color:var(--green);margin-bottom:.3rem">Real Article Example</div>
+            <div style="font-size:.75rem;color:var(--ink3)">Reuters news report on WHO guidelines</div>
+          </button>
+        </div>
+      </div>
+      <div class="analyze-bar">
+        <button class="btn-analyze" id="analyze-btn" onclick="runAnalysis()">
+          <span id="btn-text">Analyze →</span>
+          <span id="btn-spinner" class="spinner" style="display:none"></span>
+        </button>
+        <span class="char-count" id="char-count">0 characters</span>
+      </div>
+    </div>
+
+    <div class="results" id="results">
+      <!-- Score + Metrics -->
+      <div class="result-grid">
+        <div class="score-card">
+          <div class="verdict" id="verdict-badge">ANALYZING</div>
+          <svg viewBox="0 0 140 140" style="width:140px;height:140px;display:block">
+            <circle cx="70" cy="70" r="54" fill="none" stroke="#f0eeea" stroke-width="14" stroke-linecap="round" stroke-dasharray="270" stroke-dashoffset="0" style="transform:rotate(-220deg);transform-origin:center"/>
+            <circle id="score-arc" cx="70" cy="70" r="54" fill="none" stroke-width="14" stroke-linecap="round" stroke-dasharray="270" stroke-dashoffset="270" style="transform:rotate(-220deg);transform-origin:center;transition:stroke-dashoffset 1s ease,stroke .5s"/>
+          </svg>
+          <div class="score-value" id="score-display">—</div>
+          <div class="score-label">Credibility Score</div>
+          <div style="width:100%;margin-top:1rem">
+            <div class="confidence-bar"><div class="confidence-fill" id="conf-bar" style="width:0%"></div></div>
+            <div class="confidence-label" id="conf-label">Confidence: —</div>
+          </div>
+        </div>
+        <div class="metrics-card">
+          <h3>Linguistic Signals</h3>
+          <div class="metric-row"><span class="metric-name">Clickbait markers</span><span class="metric-val" id="m-clickbait">—</span></div>
+          <div class="metric-row"><span class="metric-name">Hedging phrases</span><span class="metric-val" id="m-hedging">—</span></div>
+          <div class="metric-row"><span class="metric-name">Emotional triggers</span><span class="metric-val" id="m-emotional">—</span></div>
+          <div class="metric-row"><span class="metric-name">ALL-CAPS ratio</span><span class="metric-val" id="m-caps">—</span></div>
+          <div class="metric-row"><span class="metric-name">Exclamation density</span><span class="metric-val" id="m-excl">—</span></div>
+          <div class="metric-row"><span class="metric-name">Word count</span><span class="metric-val" id="m-words">—</span></div>
+          <div class="metric-row"><span class="metric-name">Avg. sentence length</span><span class="metric-val" id="m-sent">—</span></div>
+          <div class="metric-row"><span class="metric-name">Processing time</span><span class="metric-val" id="m-time">—</span></div>
+        </div>
+      </div>
+
+      <!-- Highlighted Text -->
+      <div class="section-card">
+        <h3>Suspicious Phrase Analysis</h3>
+        <div class="legend">
+          <span class="legend-item"><span class="legend-dot" style="background:#fce8e6;border:1px solid #e74c3c"></span>Clickbait</span>
+          <span class="legend-item"><span class="legend-dot" style="background:#fff3e0;border:1px solid #ff9800"></span>Hedging</span>
+          <span class="legend-item"><span class="legend-dot" style="background:#fce4ec;border:1px solid #e91e63"></span>Emotional trigger</span>
+        </div>
+        <div class="highlighted-text" id="highlighted-text">—</div>
+      </div>
+
+      <!-- Sources -->
+      <div class="section-card">
+        <h3>Fact-Check Cross-Reference</h3>
+        <div class="sources-grid" id="sources-grid"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

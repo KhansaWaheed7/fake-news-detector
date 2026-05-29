@@ -1,0 +1,58 @@
+{
+  "results": {
+    "Logistic Regression": {
+      "accuracy": 75.0,
+      "precision": 72.73,
+      "recall": 80.0,
+      "f1": 76.19,
+      "auc": 0.905,
+      "cm": [
+        [
+          7,
+          3
+        ],
+        [
+          2,
+          8
+        ]
+      ]
+    },
+    "Random Forest": {
+      "accuracy": 70.0,
+      "precision": 62.5,
+      "recall": 100.0,
+      "f1": 76.92,
+      "auc": 0.895,
+      "cm": [
+        [
+          4,
+          6
+        ],
+        [
+          0,
+          10
+        ]
+      ]
+    },
+    "Gradient Boosting": {
+      "accuracy": 80.0,
+      "precision": 71.43,
+      "recall": 100.0,
+      "f1": 83.33,
+      "auc": 0.925,
+      "cm": [
+        [
+          6,
+          4
+        ],
+        [
+          0,
+          10
+        ]
+      ]
+    }
+  },
+  "best_model": "Gradient Boosting",
+  "dataset_size": 100,
+  "test_size": 20
+}

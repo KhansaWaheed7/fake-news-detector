@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>About</title>
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+
+<!-- NAVIGATION -->
+<nav>
+  <a class="logo" href="index.html">
+    <span class="logo-text">VerifyAI</span>
+  </a>
+
+  <ul class="nav-links">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="analyzer.html">Analyzer</a></li>
+    <li><a href="dashboard.html" >Dashboard</a></li>
+    <li><a href="analytics.html" >Analytics</a></li>
+    <li><a href="about.html" class="active">About</a></li>
+  </ul>
+</nav>
+
+<!-- ABOUT PAGE -->
+<div class="page active" id="about">
+
+  <h2>About VerifyAI</h2>
+
+  <p class="about-lead">
+    VerifyAI is an AI based misinformation detection system. It helps users verify news articles in real time
+    using machine learning and NLP techniques.
+  </p>
+
+
+  <!-- SYSTEM ARCHITECTURE -->
+  <div class="arch-diagram">
+
+    <h3>System Architecture</h3>
+
+    <div class="arch-flow">
+
+      <div class="arch-box">
+        User Input<br />
+        <small>Text / URL</small>
+      </div>
+
+      <span class="arch-arrow">→</span>
+
+      <div class="arch-box">
+        Flask API<br />
+        <small>Python Backend</small>
+      </div>
+
+      <span class="arch-arrow">→</span>
+
+      <div class="arch-box">
+        VerifyBERT Model<br />
+        <small>HuggingFace Transformers</small>
+      </div>
+
+      <span class="arch-arrow">→</span>
+
+      <div class="arch-box">
+        NLP Phrase Extractor<br />
+        <small>Regex + Text Analysis</small>
+      </div>
+
+      <span class="arch-arrow">→</span>
+
+      <div class="arch-box">
+        Fact-Check Scorer<br />
+        <small>Trusted Source Matching</small>
+      </div>
+
+      <span class="arch-arrow">→</span>
+
+      <div class="arch-box">
+        Frontend UI<br />
+        <small>HTML / CSS / JS Dashboard</small>
+      </div>
+
+    </div>
+  </div>
+
+
+</div>
+<script src="app.js"></script>
+</body>
+</html>

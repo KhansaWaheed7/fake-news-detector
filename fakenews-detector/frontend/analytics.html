@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Analytics</title>
+<link rel="stylesheet" href="styles.css"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="styles.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+
+<body>
+
+<nav>
+  <a class="logo" href="index.html">
+    <span class="logo-text">VerifyAI</span>
+  </a>
+
+  <ul class="nav-links">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="analyzer.html">Analyzer</a></li>
+    <li><a href="dashboard.html" >Dashboard</a></li>
+    <li><a href="analytics.html" class="active">Analytics</a></li>
+    <li><a href="about.html">About</a></li>
+  </ul>
+</nav>
+
+<div class="page active" id="analytics">
+
+  <h2>System Analytics</h2>
+  <p class="subtitle">
+    Real-time analytics generated from VerifyAI usage
+  </p>
+
+  <!-- KPI Cards -->
+  <div class="kpi-row" id="analytics-kpis"></div>
+
+  <!-- Charts -->
+  <div class="analytics-grid">
+
+    <div class="chart-card">
+      <h3>Analysis Activity</h3>
+      <canvas id="activityChart"></canvas>
+    </div>
+
+    <div class="chart-card">
+      <h3>Average Processing Time</h3>
+      <canvas id="processingChart"></canvas>
+    </div>
+
+  </div>
+
+  <!-- Recent Analysis Table -->
+  <div class="history-section">
+
+    <h3>Recent Analyses</h3>
+
+    <table class="compare-table">
+
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Score</th>
+          <th>Confidence</th>
+          <th>Flags</th>
+          <th>Words</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+
+      <tbody id="analytics-history"></tbody>
+
+    </table>
+
+  </div>
+
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
