@@ -73,7 +73,6 @@ SUSPICIOUS_DOMAINS = {
     "infowars.com":8,"naturalnews.com":12,"beforeitsnews.com":10,
     "worldnewsdailyreport.com":5,"empirenews.net":4,
 }
-
 # ─────────────────────────────────────────────────────────────────────
 # Linguistic markers (used by heuristic + phrase highlighter)
 # ─────────────────────────────────────────────────────────────────────
