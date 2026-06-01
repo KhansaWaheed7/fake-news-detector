@@ -1,226 +1,209 @@
-import os
-import json
+import os, json, pickle, warnings
 import numpy as np
 import pandas as pd
-from datasets import load_dataset
+
 from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.ensemble import VotingClassifier
+
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics import (accuracy_score, classification_report,
-                             confusion_matrix, roc_auc_score)
+from sklearn.metrics import accuracy_score, roc_auc_score, classification_report
 from sklearn.pipeline import Pipeline
-from sklearn.model_selection import cross_val_score
-import pickle
-import warnings
+from sklearn.preprocessing import StandardScaler
+from sklearn.base import BaseEstimator, TransformerMixin
+
+import scipy.sparse as sp
+
 warnings.filterwarnings("ignore")
 
 # CONFIG
-USE_BERT = False        
-SAVE_DIR = os.path.join(os.path.dirname(__file__), '..', 'backend', 'model')
-os.makedirs(SAVE_DIR, exist_ok=True)
 
-# Load LIAR Dataset
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(BASE_DIR, "data")
+MODEL_DIR = os.path.join(BASE_DIR, "..", "backend", "model")
+os.makedirs(MODEL_DIR, exist_ok=True)
 
-print("\n[1/5] Loading LIAR dataset from HuggingFace...")
-print("      (Downloads ~3MB, first time only)\n")
+TRAIN_FILE = os.path.join(DATA_DIR, "train2.tsv")
+TEST_FILE  = os.path.join(DATA_DIR, "test2.tsv")
+VALID_FILE = os.path.join(DATA_DIR, "valid2.tsv")
 
-dataset = load_dataset("liar")
-print(f"  Train samples : {len(dataset['train'])}")
-print(f"  Test  samples : {len(dataset['test'])}")
-print(f"  Valid samples : {len(dataset['validation'])}")
-print(f"\n  Columns: {dataset['train'].column_names}")
+COLS = [
+    'id','label','statement','subjects','speaker','job',
+    'state','party','barely_true_c','false_c','half_true_c',
+    'mostly_true_c','pants_fire_c','context'
+]
 
+FAKE_LABELS = {'pants-fire', 'false', 'barely-true'}
 
-# Preprocess
-print("\n[2/5] Preprocessing labels...")
+print("\n" + "="*60)
+print("VerifyAI Training Started")
+print("="*60)
 
-# LIAR has 6 labels: pants-fire, false, barely-true, half-true, mostly-true, true
-# bin them into FAKE (0) and REAL (1)
-FAKE_LABELS = {"pants-fire", "false", "barely-true"}
-REAL_LABELS = {"half-true", "mostly-true", "true"}
+# ─────────────────────────────────────────────
+# CHECK FILES
+# ─────────────────────────────────────────────
+for f in [TRAIN_FILE, TEST_FILE, VALID_FILE]:
+    if not os.path.exists(f):
+        print(" Missing dataset files!")
+        exit()
 
-def binarize(label):
-    return 0 if label in FAKE_LABELS else 1
+print("Dataset found")
 
-def to_df(split):
-    df = pd.DataFrame(split)
-    # Combine statement + speaker + subject for richer features
-    df['text'] = (
-        df['statement'].fillna('') + ' ' +
-        df['speaker'].fillna('') + ' ' +
-        df['subjects'].fillna('')
+# LOAD DATA
+
+def load_data(path):
+    df = pd.read_csv(path, sep="\t", header=None, names=COLS, on_bad_lines='skip')
+
+    df["label_bin"] = df["label"].apply(
+        lambda x: 0 if str(x).strip() in FAKE_LABELS else 1
     )
-    df['label_bin'] = df['label'].apply(binarize)
-    return df[['text', 'label_bin', 'label', 'statement', 'speaker']]
 
-train_df = to_df(dataset['train'])
-test_df  = to_df(dataset['test'])
-val_df   = to_df(dataset['validation'])
+    df["text"] = (
+        df["statement"].fillna("") + " " +
+        df["context"].fillna("") + " " +
+        df["subjects"].fillna("")
+    )
 
-print(f"\n  Binary label distribution (train):")
-print(train_df['label_bin'].value_counts().rename({0:'FAKE', 1:'REAL'}))
+    df["speaker"] = df["speaker"].fillna("unknown")
+    df["party"] = df["party"].fillna("none")
 
-# Train Baseline Models (always run, fast)
-print("\n[3/5] Training baseline models...")
+    hist_cols = ['barely_true_c','false_c','half_true_c','mostly_true_c','pants_fire_c']
+    for c in hist_cols:
+        df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0)
 
-X_train = train_df['text']
-y_train = train_df['label_bin']
-X_test  = test_df['text']
-y_test  = test_df['label_bin']
+    df["lie_ratio"] = (df["false_c"] + df["barely_true_c"] + df["pants_fire_c"]) / (df[hist_cols].sum(axis=1) + 1)
 
-# Model 1: Logistic Regression 
-print("  Training Logistic Regression...")
-lr_pipe = Pipeline([
-    ('tfidf', TfidfVectorizer(max_features=10000, ngram_range=(1, 2),
-                              stop_words='english', sublinear_tf=True)),
-    ('clf', LogisticRegression(max_iter=1000, C=1.0, class_weight='balanced'))
+    return df
+
+train_df = load_data(TRAIN_FILE)
+test_df  = load_data(TEST_FILE)
+val_df   = load_data(VALID_FILE)
+
+train_df = pd.concat([train_df, val_df], ignore_index=True)
+
+print(f"Train samples: {len(train_df)}")
+print(f"Test samples : {len(test_df)}")
+
+# FEATURES
+
+class ColumnSelector(BaseEstimator, TransformerMixin):
+    def __init__(self, col): self.col = col
+    def fit(self, X, y=None): return self
+    def transform(self, X): return X[self.col]
+
+class NumericSelector(BaseEstimator, TransformerMixin):
+    def __init__(self, cols): self.cols = cols
+    def fit(self, X, y=None): return self
+    def transform(self, X): return X[self.cols].values.astype(float)
+
+NUM_COLS = ['barely_true_c','false_c','half_true_c','mostly_true_c','pants_fire_c','lie_ratio']
+
+text_pipe = Pipeline([
+    ("sel", ColumnSelector("text")),
+    ("tfidf", TfidfVectorizer(max_features=20000, ngram_range=(1,2)))
 ])
-lr_pipe.fit(X_train, y_train)
-lr_pred = lr_pipe.predict(X_test)
-lr_prob = lr_pipe.predict_proba(X_test)[:, 1]
-lr_acc  = accuracy_score(y_test, lr_pred)
-lr_auc  = roc_auc_score(y_test, lr_prob)
-print(f"  LR  → Accuracy: {lr_acc:.4f}  AUC: {lr_auc:.4f}")
 
-# Model 2: Random Forest 
-print("  Training Random Forest (this takes ~2 min)...")
-rf_pipe = Pipeline([
-    ('tfidf', TfidfVectorizer(max_features=10000, ngram_range=(1, 2),
-                              stop_words='english', sublinear_tf=True)),
-    ('clf', RandomForestClassifier(n_estimators=200, random_state=42,
-                                   class_weight='balanced', n_jobs=-1))
+speaker_pipe = Pipeline([
+    ("sel", ColumnSelector("speaker")),
+    ("tfidf", TfidfVectorizer(max_features=300))
 ])
-rf_pipe.fit(X_train, y_train)
-rf_pred = rf_pipe.predict(X_test)
-rf_prob = rf_pipe.predict_proba(X_test)[:, 1]
-rf_acc  = accuracy_score(y_test, rf_pred)
-rf_auc  = roc_auc_score(y_test, rf_prob)
-print(f"  RF  → Accuracy: {rf_acc:.4f}  AUC: {rf_auc:.4f}")
 
-# Pick the best baseline
-best_model = rf_pipe if rf_acc >= lr_acc else lr_pipe
-best_name  = "Random Forest" if rf_acc >= lr_acc else "Logistic Regression"
-best_acc   = max(rf_acc, lr_acc)
-print(f"\n  Best baseline: {best_name} ({best_acc:.4f})")
+num_pipe = Pipeline([
+    ("sel", NumericSelector(NUM_COLS)),
+    ("scaler", StandardScaler())
+])
 
-# Save best baseline
-baseline_path = os.path.join(SAVE_DIR, 'baseline_model.pkl')
-with open(baseline_path, 'wb') as f:
+class Features:
+    def fit(self, X, y=None):
+        self.t = text_pipe.fit(X)
+        self.s = speaker_pipe.fit(X)
+        self.n = num_pipe.fit(X)
+        return self
+
+    def transform(self, X):
+        t = self.t.transform(X)
+        s = self.s.transform(X)
+        n = self.n.transform(X)
+        return sp.hstack([t, s, sp.csr_matrix(n)])
+
+features = Features()
+
+X_train = features.fit(train_df).transform(train_df)
+X_test  = features.transform(test_df)
+
+y_train = train_df["label_bin"].values
+y_test  = test_df["label_bin"].values
+
+# MODEL EVALUATION FUNCTION
+
+def evaluate(name, model):
+    pred = model.predict(X_test)
+    acc = accuracy_score(y_test, pred)
+
+    auc = 0
+    if hasattr(model, "predict_proba"):
+        auc = roc_auc_score(y_test, model.predict_proba(X_test)[:, 1])
+
+    print("\n" + "-"*50)
+    print(f"Model: {name}")
+    print(f"Accuracy: {acc:.4f}")
+    print(f"AUC: {auc:.4f}")
+    print("-"*50)
+
+    return model, acc
+
+# TRAIN MODELS
+
+print("\nTraining Models...\n")
+
+results = {}
+
+lr = LogisticRegression(max_iter=1000, class_weight="balanced")
+lr, acc_lr = evaluate("Logistic Regression", lr.fit(X_train, y_train))
+results["Logistic Regression"] = (lr, acc_lr)
+
+rf = RandomForestClassifier(n_estimators=300, class_weight="balanced")
+rf, acc_rf = evaluate("Random Forest", rf.fit(X_train, y_train))
+results["Random Forest"] = (rf, acc_rf)
+
+gb = GradientBoostingClassifier()
+gb, acc_gb = evaluate("Gradient Boosting", gb.fit(X_train, y_train))
+results["Gradient Boosting"] = (gb, acc_gb)
+
+# ENSEMBLE
+
+top2 = sorted(results.items(), key=lambda x: x[1][1], reverse=True)[:2]
+
+ensemble = VotingClassifier(
+    estimators=[(name, model) for name, (model, _) in top2],
+    voting="soft"
+)
+
+ensemble.fit(X_train, y_train)
+ensemble, acc_en = evaluate("Ensemble", ensemble)
+
+results["Ensemble"] = (ensemble, acc_en)
+
+# FINAL SUMMARY
+
+print("\n" + "="*60)
+print("FINAL RESULTS")
+print("="*60)
+
+for name, (model, acc) in sorted(results.items(), key=lambda x: x[1][1], reverse=True):
+    print(f"{name:<20} ➜ {acc:.4f}")
+
+best_name = max(results, key=lambda k: results[k][1])
+best_model = results[best_name][0]
+
+print("\ BEST MODEL:", best_name)
+print("BEST ACCURACY:", results[best_name][1])
+print("="*60)
+
+# SAVE MODEL
+
+with open(os.path.join(MODEL_DIR, "model.pkl"), "wb") as f:
     pickle.dump(best_model, f)
-print(f"  Saved → {baseline_path}")
 
-# Fine-tune BERT 
-bert_acc = None
-if USE_BERT:
-    print("\n[4/5] Fine-tuning BERT (bert-base-uncased)...")
-    print("      This requires ~4GB RAM and takes 20-40 min on CPU.\n")
-    try:
-        import torch
-        from transformers import (BertTokenizer, BertForSequenceClassification,
-                                  Trainer, TrainingArguments)
-        from torch.utils.data import Dataset as TorchDataset
-
-        tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-
-        class LIARDataset(TorchDataset):
-            def __init__(self, texts, labels, tokenizer, max_len=128):
-                self.encodings = tokenizer(
-                    list(texts), truncation=True, padding=True,
-                    max_length=max_len, return_tensors='pt'
-                )
-                self.labels = torch.tensor(list(labels), dtype=torch.long)
-            def __len__(self):
-                return len(self.labels)
-            def __getitem__(self, idx):
-                item = {k: v[idx] for k, v in self.encodings.items()}
-                item['labels'] = self.labels[idx]
-                return item
-
-        # Use a subset for speed on CPU
-        MAX_TRAIN = 5000 if not torch.cuda.is_available() else len(train_df)
-        MAX_TEST  = 1000 if not torch.cuda.is_available() else len(test_df)
-
-        train_sub = train_df.sample(min(MAX_TRAIN, len(train_df)), random_state=42)
-        test_sub  = test_df.sample(min(MAX_TEST,  len(test_df)),  random_state=42)
-
-        train_ds = LIARDataset(train_sub['text'], train_sub['label_bin'], tokenizer)
-        test_ds  = LIARDataset(test_sub['text'],  test_sub['label_bin'],  tokenizer)
-
-        model = BertForSequenceClassification.from_pretrained(
-            'bert-base-uncased', num_labels=2
-        )
-
-        args = TrainingArguments(
-            output_dir=os.path.join(SAVE_DIR, 'bert_checkpoints'),
-            num_train_epochs=3,
-            per_device_train_batch_size=16,
-            per_device_eval_batch_size=32,
-            evaluation_strategy='epoch',
-            save_strategy='epoch',
-            load_best_model_at_end=True,
-            logging_steps=50,
-            report_to='none',
-        )
-
-        trainer = Trainer(
-            model=model,
-            args=args,
-            train_dataset=train_ds,
-            eval_dataset=test_ds,
-        )
-
-        trainer.train()
-
-        # Evaluate
-        preds_out = trainer.predict(test_ds)
-        bert_preds = np.argmax(preds_out.predictions, axis=1)
-        bert_acc   = accuracy_score(test_sub['label_bin'], bert_preds)
-        print(f"\n  BERT → Accuracy: {bert_acc:.4f}")
-
-        # Save BERT model
-        bert_dir = os.path.join(SAVE_DIR, 'bert')
-        model.save_pretrained(bert_dir)
-        tokenizer.save_pretrained(bert_dir)
-        print(f"  Saved BERT → {bert_dir}")
-
-    except Exception as e:
-        print(f"  BERT training failed: {e}")
-        print("  Falling back to baseline model.")
-        USE_BERT = False
-else:
-    print("\n[4/5] Skipping BERT (USE_BERT=False)")
-    print("      Set USE_BERT=True at top of file to enable.")
-
-# Save metadata for the Flask app
-print("\n[5/5] Saving model metadata...")
-
-meta = {
-    "use_bert": USE_BERT and bert_acc is not None,
-    "best_baseline": best_name,
-    "lr_accuracy":   round(float(lr_acc), 4),
-    "lr_auc":        round(float(lr_auc), 4),
-    "rf_accuracy":   round(float(rf_acc), 4),
-    "rf_auc":        round(float(rf_auc), 4),
-    "bert_accuracy": round(float(bert_acc), 4) if bert_acc else None,
-    "dataset": "LIAR (HuggingFace)",
-    "train_size": len(train_df),
-    "test_size":  len(test_df),
-    "label_mapping": {"0": "FAKE", "1": "REAL"},
-    "fake_labels": list(FAKE_LABELS),
-    "real_labels": list(REAL_LABELS),
-}
-
-meta_path = os.path.join(SAVE_DIR, 'model_meta.json')
-with open(meta_path, 'w') as f:
-    json.dump(meta, f, indent=2)
-print(f"  Saved → {meta_path}")
-
-print("\n" + "="*55)
-print("  TRAINING COMPLETE")
-print("="*55)
-print(f"  Logistic Regression : {lr_acc:.4f} accuracy")
-print(f"  Random Forest       : {rf_acc:.4f} accuracy")
-if bert_acc:
-    print(f"  BERT (fine-tuned)   : {bert_acc:.4f} accuracy")
-print(f"\n  Model files saved to: backend/model/")
-print("="*55 + "\n")
+print("\Model saved successfully!")
+print("Ready for Flask deployment")
