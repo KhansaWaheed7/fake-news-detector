@@ -45,10 +45,10 @@ fakenews-detector/
 ```
 
 ## Features
-- NLP text classifier (heuristic + BERT-ready backend)
+- NLP text classifier 
 - Highlighted suspicious phrases (clickbait / hedging / emotional)
 - Credibility score dial (0–100)
-- Fact-check cross-reference (Snopes, PolitiFact, AFP, FactCheck.org)
+- Fact-check cross-reference 
 - Web presence timeline
 - Dashboard with charts and history
 - Model analytics page
