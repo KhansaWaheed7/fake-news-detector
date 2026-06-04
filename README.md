@@ -53,11 +53,3 @@ fakenews-detector/
 - Dashboard with charts and history
 - Model analytics page
 
-## API Endpoints
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/analyze` | Analyze article text or URL |
-| GET | `/api/history` | Recent analysis history |
-| GET | `/api/stats` | Platform statistics |
-
-## Video Demo
